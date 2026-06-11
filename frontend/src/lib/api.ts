@@ -99,18 +99,12 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
           } as RequestInit);
         } else {
           tokenStorage.clear();
-          window.location.href = '/auth/login';
-          throw new Error('Session expired');
         }
       } catch {
         tokenStorage.clear();
-        window.location.href = '/auth/login';
-        throw new Error('Session expired');
       }
     } else {
       tokenStorage.clear();
-      window.location.href = '/auth/login';
-      throw new Error('Session expired');
     }
   }
 

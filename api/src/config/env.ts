@@ -45,7 +45,7 @@ export const env = {
     pass: process.env.MAIL_PASS!,
     from: process.env.MAIL_FROM!,
   },
-  clientUrl: process.env.CLIENT_URL ?? "http://localhost:3000",
+  clientUrl: (process.env.CLIENT_URL ?? "http://localhost:3000").replace(/\/$/, ""),
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
