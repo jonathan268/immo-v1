@@ -299,3 +299,10 @@ export interface FeatureRequestsListQuery extends PaginationQuery {
 export interface InquiriesListQuery extends PaginationQuery {
   property_id?: string;
 }
+
+export interface DashboardStats {
+  total_properties: number;
+  total_cities: number;
+  total_owners: number;
+  total_inquiries: number;
+}

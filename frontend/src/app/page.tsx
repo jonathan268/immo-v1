@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { propertiesApi, usersApi } from '@/lib/api';
-import type { Property, User } from '@/lib/types';
+import { propertiesApi, usersApi, statsApi } from '@/lib/api';
+import type { Property, User, DashboardStats } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import Badge, { statusBadge } from '@/components/ui/Badge';
@@ -54,6 +54,7 @@ export default function HomePage() {
   const [topAgents, setTopAgents] = useState<User[]>([]);
   const [agentPropertyCounts, setAgentPropertyCounts] = useState<Record<string, number>>({});
 
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -72,12 +73,15 @@ export default function HomePage() {
 
     async function load() {
       try {
-        const [propsRes, usersRes] = await Promise.all([
+        const [propsRes, usersRes, statsRes] = await Promise.all([
           propertiesApi.list({ limit: 50, sort: 'newest' }),
           usersApi.list({ page: 1, limit: 50, role: 'OWNER' }),
+          statsApi.dashboard(),
         ]);
 
         if (cancelled) return;
+
+        setStats(statsRes.data);
 
         const allProperties = propsRes.data;
 
@@ -223,7 +227,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Stats ── */}
-      <StatsSection loading={loading} />
+      <StatsSection loading={loading} stats={stats} />
 
       {/* ── Propriétés récentes ── */}
       <Reveal>
@@ -574,19 +578,19 @@ export default function HomePage() {
   );
 }
 
-function StatsSection({ loading }: { loading: boolean }) {
+function StatsSection({ loading, stats }: { loading: boolean; stats: DashboardStats | null }) {
   const { ref, inView } = useInView(0.3);
-  const stats = [
-    { label: 'Annonces', end: 1200, suffix: '+' },
-    { label: 'Villes', end: 15, suffix: '+' },
-    { label: 'Propriétaires', end: 500, suffix: '+' },
-    { label: 'Visiteurs/jour', end: 3000, suffix: '+' },
-  ];
+  const items = stats ? [
+    { label: 'Annonces', end: stats.total_properties, suffix: '+' },
+    { label: 'Villes', end: stats.total_cities, suffix: '+' },
+    { label: 'Propriétaires', end: stats.total_owners, suffix: '+' },
+    { label: 'Demandes reçues', end: stats.total_inquiries, suffix: '+' },
+  ] : [];
 
   return (
     <section ref={ref} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-20">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-6 rounded-2xl bg-[var(--glass-bg)] backdrop-blur-2xl border border-[var(--glass-border)] shadow-lg shadow-black/5">
-        {loading ? (
+        {loading || !stats ? (
           <>
             <StatSkeleton />
             <StatSkeleton />
@@ -595,7 +599,7 @@ function StatsSection({ loading }: { loading: boolean }) {
           </>
         ) : (
           <>
-            {stats.map((stat) => (
+            {items.map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-xl sm:text-2xl lg:text-3xl font-heading font-bold text-primary-700">
                   <CountUp end={stat.end} suffix={stat.suffix} inView={inView} />

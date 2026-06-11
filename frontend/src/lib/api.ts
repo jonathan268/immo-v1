@@ -27,6 +27,7 @@ import type {
   PaymentsListQuery,
   FeatureRequestsListQuery,
   InquiriesListQuery,
+  DashboardStats,
 } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -347,6 +348,10 @@ export const featureRequestsApi = {
       method: 'PATCH',
       body: JSON.stringify({ rejection_reason }),
     }),
+};
+
+export const statsApi = {
+  dashboard: () => request<ApiResponse<DashboardStats>>('/stats/dashboard'),
 };
 
 export const favoritesApi = {

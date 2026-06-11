@@ -19,6 +19,7 @@ import paymentsRouter from './modules/payments/payments.routes';
 import mediaRouter from './modules/media/media.routes';
 import favoritesRouter from './modules/favorites/favorites.routes';
 import featureRequestsRouter from './modules/feature-requests/feature-requests.routes';
+import statsRouter from './modules/stats/stats.routes';
 
 validateEnv();
 
@@ -121,6 +122,7 @@ app.use('/api/v1/payments', paymentsRouter);
 app.use('/api/v1/properties', mediaRouter);
 app.use('/api/v1/favorites', favoritesRouter);
 app.use('/api/v1/feature-requests', featureRequestsRouter);
+app.use('/api/v1/stats', statsRouter);
 
 // ─── 404 Handler ──────────────────────────────
 app.use((_req: Request, res: Response) => {
