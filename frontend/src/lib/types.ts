@@ -305,10 +305,20 @@ export interface CityStat {
   count: number;
 }
 
+export interface TopAgent {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  is_featured: boolean;
+  is_verified: boolean;
+  property_count: number;
+}
+
 export interface DashboardStats {
   total_properties: number;
   total_cities: number;
   total_owners: number;
   total_inquiries: number;
   cities: CityStat[];
+  top_agents: TopAgent[];
 }

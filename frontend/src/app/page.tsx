@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { propertiesApi, usersApi, statsApi } from '@/lib/api';
-import type { Property, User, DashboardStats } from '@/lib/types';
+import { propertiesApi, statsApi } from '@/lib/api';
+import type { Property, DashboardStats } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import Badge, { statusBadge } from '@/components/ui/Badge';
@@ -42,9 +42,6 @@ export default function HomePage() {
 
   const [recentProperties, setRecentProperties] = useState<Property[]>([]);
   const [featuredProperties, setFeaturedProperties] = useState<Property[]>([]);
-  const [topAgents, setTopAgents] = useState<User[]>([]);
-  const [agentPropertyCounts, setAgentPropertyCounts] = useState<Record<string, number>>({});
-
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,9 +61,8 @@ export default function HomePage() {
 
     async function load() {
       try {
-        const [propsRes, usersRes, statsRes] = await Promise.all([
+        const [propsRes, statsRes] = await Promise.all([
           propertiesApi.list({ limit: 50, sort: 'newest' }),
-          usersApi.list({ page: 1, limit: 50, role: 'OWNER' }),
           statsApi.dashboard(),
         ]);
 
@@ -86,21 +82,6 @@ export default function HomePage() {
 
         setRecentProperties(recent);
         setFeaturedProperties(featured.length > 0 ? featured : allProperties.slice(0, 6));
-
-        // Build owner → property count
-        const counts: Record<string, number> = {};
-        allProperties.forEach(p => {
-          counts[p.owner_id] = (counts[p.owner_id] || 0) + 1;
-        });
-
-        // Sort owners by property count, take top 3
-        const owners = usersRes.data
-          .filter(u => counts[u.id])
-          .sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0))
-          .slice(0, 3);
-
-        setTopAgents(owners);
-        setAgentPropertyCounts(counts);
       } catch {
         // silently fail
       } finally {
@@ -366,13 +347,13 @@ export default function HomePage() {
             </p>
           </div>
 
-          {loading ? (
+          {loading || !stats ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto">
               {[1, 2, 3].map(i => <AgentCardSkeleton key={i} />)}
             </div>
-          ) : topAgents.length > 0 ? (
+          ) : stats.top_agents.length > 0 ? (
             <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto" baseDelay={0} stepDelay={140} from="scale">
-              {topAgents.map((agent, idx) => (
+              {stats.top_agents.map((agent, idx) => (
                 <div
                   key={agent.id}
                   className="relative rounded-2xl bg-[var(--glass-bg)] backdrop-blur-xl border border-[var(--glass-border)] shadow-lg shadow-black/5 p-6 sm:p-8 text-center hover:bg-[var(--glass-bg-hover)] hover:shadow-xl hover:shadow-primary-900/10 transition-all duration-500"
@@ -393,7 +374,7 @@ export default function HomePage() {
                   </p>
                   <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-[var(--glass-border)]">
                     <div className="text-center">
-                      <p className="text-lg sm:text-xl font-bold text-primary-700">{agentPropertyCounts[agent.id] || 0}</p>
+                      <p className="text-lg sm:text-xl font-bold text-primary-700">{agent.property_count}</p>
                       <p className="text-[10px] sm:text-xs text-primary-400">Annonces</p>
                     </div>
                     <div className="text-center">
