@@ -300,9 +300,15 @@ export interface InquiriesListQuery extends PaginationQuery {
   property_id?: string;
 }
 
+export interface CityStat {
+  name: string;
+  count: number;
+}
+
 export interface DashboardStats {
   total_properties: number;
   total_cities: number;
   total_owners: number;
   total_inquiries: number;
+  cities: CityStat[];
 }

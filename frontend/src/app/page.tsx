@@ -20,15 +20,6 @@ const propertyTypeLabels: Record<string, string> = {
   TERRAIN: 'Terrain',
 };
 
-const popularCities = [
-  { name: 'Douala', region: 'Littoral', count: '320+', image: null },
-  { name: 'Yaoundé', region: 'Centre', count: '280+', image: null },
-  { name: 'Bafoussam', region: 'Ouest', count: '150+', image: null },
-  { name: 'Garoua', region: 'Nord', count: '90+', image: null },
-  { name: 'Bamenda', region: 'Nord-Ouest', count: '110+', image: null },
-  { name: 'Maroua', region: 'Extrême-Nord', count: '70+', image: null },
-];
-
 const formatPrice = (price: number) =>
   new Intl.NumberFormat('fr-FR').format(price) + ' FCFA';
 
@@ -329,13 +320,13 @@ export default function HomePage() {
             </div>
           </Reveal>
 
-          {loading ? (
+          {loading || !stats ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3, 4, 5, 6].map(i => <CityCardSkeleton key={i} />)}
             </div>
           ) : (
             <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" baseDelay={0} stepDelay={100}>
-              {popularCities.map((c) => (
+              {stats.cities.slice(0, 6).map((c) => (
                 <Link
                   key={c.name}
                   href={`/properties?city=${encodeURIComponent(c.name)}`}
@@ -348,7 +339,6 @@ export default function HomePage() {
                     </svg>
                     <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
                       <h3 className="text-lg sm:text-xl font-heading font-bold text-white">{c.name}</h3>
-                      <p className="text-xs sm:text-sm text-white/70">{c.region}</p>
                     </div>
                   </div>
                   <div className="p-4 flex items-center justify-between">
