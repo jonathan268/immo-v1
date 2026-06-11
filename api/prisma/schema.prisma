@@ -1,0 +1,286 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  OWNER
+  TENANT
+}
+
+enum PropertyType {
+  MAISON
+  BUREAU
+  ENTREPOT
+  LOCAL_COMMERCIAL
+  TERRAIN
+}
+
+enum PropertyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FeatureTarget {
+  AGENT
+  PROPERTY
+}
+
+enum PaymentType {
+  FEATURED
+  SUBSCRIPTION
+  AGENT_FEATURE
+}
+
+model User {
+  id           String    @id @default(uuid())
+  full_name    String
+  email        String    @unique
+  phone        String?   @unique
+  password     String?
+  google_id    String?   @unique
+  role         Role      @default(TENANT)
+  is_verified        Boolean   @default(false)
+  is_suspended       Boolean   @default(false)
+  is_featured        Boolean   @default(false)
+  failed_login_attempts Int   @default(0)
+  locked_until         DateTime?
+  reset_token        String?   @unique
+  reset_token_expires DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  
+  properties   Property[]
+  inquiries    Inquiry[]
+  payments     Payment[]
+  reviews      Review[]
+  favorites    Favorite[]
+  refresh_tokens RefreshToken[]
+  featureRequests FeatureRequest[] @relation("requester")
+  reviewedRequests FeatureRequest[] @relation("reviewer")
+  agentFeatureRequests FeatureRequest[] @relation("agentFeatures")
+  audit_logs   AuditLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Property {
+  id            String          @id @default(uuid())
+  owner_id      String
+  title         String
+  description   String
+  country       String
+  city          String
+  neighborhood  String
+  address       String
+  property_type PropertyType
+  price         Decimal         @db.Decimal(12, 2)
+  currency      String          @default("XOF")
+  size_m2       Float
+  is_featured   Boolean         @default(false)
+  is_deleted    Boolean         @default(false)
+  status        PropertyStatus  @default(PENDING)
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+  
+  owner         User            @relation(fields: [owner_id], references: [id])
+  images        PropertyImage[]
+  inquiries     Inquiry[]
+  payments      Payment[]
+  reviews       Review[]
+  favorites     Favorite[]
+  featureRequests FeatureRequest[] @relation("propertyFeatures")
+
+  @@index([status, is_deleted])
+  @@index([city, neighborhood])
+  @@index([is_featured])
+  @@index([owner_id])
+  @@map("properties")
+}
+
+
+model PropertyImage {
+  id          String   @id @default(uuid())
+  property_id String
+  image_url   String
+  order       Int      @default(0)
+  created_at  DateTime @default(now())
+
+  
+  property    Property @relation(fields: [property_id], references: [id])
+
+  @@index([property_id])
+  @@map("property_images")
+}
+
+
+model Inquiry {
+  id           String   @id @default(uuid())
+  property_id  String
+  sender_id    String?
+  name         String
+  phone_number String
+  message      String
+  created_at   DateTime @default(now())
+ 
+  property     Property @relation(fields: [property_id], references: [id])
+  sender       User?    @relation(fields: [sender_id], references: [id])
+
+  @@index([property_id])
+  @@map("inquiries")
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  owner_id         String
+  property_id      String?
+  amount           Decimal       @db.Decimal(12, 2)
+  currency         String        @default("XOF")
+  status           PaymentStatus @default(PENDING)
+  type             PaymentType   @default(FEATURED)
+  flutterwave_ref  String?       @unique
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+
+ 
+  owner            User          @relation(fields: [owner_id], references: [id])
+  property         Property?     @relation(fields: [property_id], references: [id])
+
+  @@index([property_id])
+  @@index([owner_id])
+  @@index([flutterwave_ref])
+  @@map("payments")
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  property_id String
+  reviewer_id String
+  rating      Int
+  comment     String?
+  created_at  DateTime @default(now())
+
+  
+  property    Property @relation(fields: [property_id], references: [id])
+  reviewer    User     @relation(fields: [reviewer_id], references: [id])
+
+@@index([property_id])
+  @@map("reviews")
+}
+
+model Favorite {
+  id          String   @id @default(uuid())
+  user_id     String
+  property_id String
+  created_at  DateTime @default(now())
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  property    Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, property_id])
+  @@index([user_id])
+  @@index([property_id])
+  @@map("favorites")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  user_id    String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([user_id])
+  @@map("refresh_tokens")
+}
+
+model FeatureRequest {
+  id            String        @id @default(uuid())
+  requester_id  String
+  target        FeatureTarget
+  target_id     String        // ID de l'agent (User) ou propriété (Property)
+  property_id   String?       // NULL si target=AGENT, remplit si target=PROPERTY
+  agent_id      String?       // NULL si target=PROPERTY, remplit si target=AGENT
+  status        RequestStatus @default(PENDING)
+  reason        String?
+  reviewed_by   String?
+  reviewed_at   DateTime?
+  rejection_reason String?
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  requester     User          @relation("requester", fields: [requester_id], references: [id], onDelete: Cascade)
+  property      Property?     @relation("propertyFeatures", fields: [property_id], references: [id], onDelete: Cascade)
+  agent         User?         @relation("agentFeatures", fields: [agent_id], references: [id], onDelete: Cascade)
+  reviewer      User?         @relation("reviewer", fields: [reviewed_by], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([target])
+  @@index([requester_id])
+  @@index([property_id])
+  @@index([agent_id])
+  @@map("feature_requests")
+}
+
+enum AuditAction {
+  USER_SUSPENDED
+  USER_UNSUSPENDED
+  USER_DELETED
+  USER_FEATURED
+  PROPERTY_APPROVED
+  PROPERTY_REJECTED
+  PROPERTY_FEATURED
+  PAYMENT_CONFIRMED
+  FEATURE_REQUEST_APPROVED
+  FEATURE_REQUEST_REJECTED
+  PASSWORD_CHANGED
+  PROFILE_UPDATED
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  user_id    String?
+  action     AuditAction
+  target_id  String?
+  target_type String?
+  details    String?
+  ip_address String?
+  created_at DateTime    @default(now())
+
+  user       User?       @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([action])
+  @@index([created_at])
+  @@map("audit_logs")
+}
